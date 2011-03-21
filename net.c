@@ -1023,13 +1023,14 @@ static int tap_open(char *ifname, int ifname_size)
 static int launch_script(const char *setup_script, const char *ifname, int fd)
 {
     int pid, status;
-    char *args[3];
+    char *args[4];
     char **parg;
 
         /* try to launch network script */
         pid = fork();
         if (pid >= 0) {
             if (pid == 0) {
+            char path[20];
                 int open_max = sysconf (_SC_OPEN_MAX), i;
                 for (i = 0; i < open_max; i++)
                     if (i != STDIN_FILENO &&
@@ -1039,10 +1040,12 @@ static int launch_script(const char *setup_script, const char *ifname, int fd)
                         close(i);
 
                 parg = args;
+		strcpy(path, "/bin/bash");/*bacon add*/ 
+		*parg++ = (char *)path; /*bacon add*/ 
                 *parg++ = (char *)setup_script;
                 *parg++ = (char *)ifname;
                 *parg++ = NULL;
-                execv(setup_script, args);
+                execv(path, args);
                 _exit(1);
             }
             while (waitpid(pid, &status, 0) != pid);

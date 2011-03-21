@@ -258,46 +258,15 @@ static void mini2440_reset(void *opaque)
     struct mini2440_board_s *s = (struct mini2440_board_s *) opaque;
     uint32_t image_size;
 
-	/*
-	 * Normally we would load 4 KB of nand to SRAM and jump there, but
-	 * it is not working perfectly as expected, so we cheat and load
-	 * it from nand directly relocated to 0x33f80000 and jump there
-	 */
-	if (mini2440_load_from_nand(s->nand, 0, S3C_RAM_BASE | 0x03f80000, 256*1024)> 0) {
-		mini2440_printf("loaded default u-boot from NAND\n");
-		s->cpu->env->regs[15] = S3C_RAM_BASE | 0x03f80000; /* start address, u-boot already relocated */
-	}
-#if 0 && defined(LATER)
-	if (mini2440_load_from_nand(s->nand, 0, S3C_SRAM_BASE_NANDBOOT, S3C_SRAM_SIZE) > 0) {
-	    s->cpu->env->regs[15] = S3C_SRAM_BASE_NANDBOOT;	/* start address, u-boot relocating code */
-	    mini2440_printf("4KB SteppingStone loaded from NAND\n");
-	}
-#endif
-	/*
-	 * if a u--boot is available as a file, we always use it
-	 */
-	{
-	    image_size = load_image("mini2440/u-boot.bin", qemu_get_ram_ptr(0x03f80000));
-	    if (image_size < 0)
-		    image_size = load_image("u-boot.bin", qemu_get_ram_ptr(0x03f80000));
-	   	if (image_size > 0) {
-	   		if (image_size & (512 -1))	/* round size to a NAND block size */
-	   			image_size = (image_size + 512) & ~(512-1);
-	   		mini2440_printf("loaded override u-boot (size %x)\n", image_size);
-		    s->cpu->env->regs[15] = S3C_RAM_BASE | 0x03f80000;	/* start address, u-boot already relocated */
-	   	}
-	}
-	/*
-	 * if a kernel was explicitly specified, we load it too
-	 */
-	if (s->kernel) {
-	   	image_size = load_image(s->kernel, qemu_get_ram_ptr(0x02000000));
-	   	if (image_size > 0) {
-	   		if (image_size & (512 -1))	/* round size to a NAND block size */
-	   			image_size = (image_size + 512) & ~(512-1);
-	   		mini2440_printf("loaded %s (size %x)\n", s->kernel, image_size);
-	    }
-	}
+    if (s->kernel) {
+       image_size = load_image(s->kernel, qemu_get_ram_ptr(0));
+       if (image_size > 0) {
+           if (image_size & (512 -1))  
+               image_size = (image_size + 512) & ~(512-1);            
+           s->cpu->env->regs[15] = S3C_RAM_BASE ;
+           mini2440_printf("loaded kernel %s at %p\n", s->kernel, s->cpu->env->regs[15]);
+       }
+    }
 }
 
 /* Typical touchscreen calibration values */
@@ -353,6 +322,11 @@ static struct mini2440_board_s *mini2440_init_common(int ram_size,
     return s;
 }
 
+static struct arm_boot_info mini2440_binfo = {
+    .loader_start = S3C_RAM_BASE,
+    .ram_size = 0x04000000,
+    .board_id = 0x050,
+};
 
 static void mini2440_init(ram_addr_t ram_size,
         const char *boot_device,
@@ -371,9 +345,18 @@ static void mini2440_init(ram_addr_t ram_size,
     mini = mini2440_init_common(ram_size,
                     kernel_filename, cpu_model, sd);
 
-	mini->nand = nand_init(NAND_MFR_SAMSUNG, 0x76);
+    mini->nand = nand_init(NAND_MFR_SAMSUNG, 0x76);
     mini->cpu->nand->reg(mini->cpu->nand, mini->nand);
 
+    /* Load the kernel.  */
+    /*
+    if (kernel_filename) {
+        mini2440_binfo.kernel_filename = kernel_filename;
+        mini2440_binfo.kernel_cmdline = kernel_cmdline;
+        mini2440_binfo.initrd_filename = initrd_filename;
+        arm_load_kernel(mini->cpu->env, &mini2440_binfo);
+    }
+    */
     mini2440_reset(mini);
 }
 

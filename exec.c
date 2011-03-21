@@ -2509,6 +2509,7 @@ void *qemu_get_ram_ptr(ram_addr_t addr)
     RAMBlock **prevp;
     RAMBlock *block;
 
+    addr = addr & 0x0fffffff;
 #ifdef CONFIG_KQEMU
     if (kqemu_phys_ram_base) {
         return kqemu_phys_ram_base + addr;
