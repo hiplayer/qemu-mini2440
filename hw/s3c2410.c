@@ -1630,6 +1630,14 @@ static void s3c_adc_tick(void *opaque)
         qemu_mod_timer(s->tst, qemu_get_clock(vm_clock) +
                         (ticks_per_sec >> 5));
     }
+    else
+    {
+        if (((s->ts & 3) == 3) && (s->ts & (1<<8)) && (s->enable))
+            qemu_irq_raise(s->tcirq);
+
+	 qemu_mod_timer(s->tst, qemu_get_clock(vm_clock) +
+                        (ticks_per_sec >> 5));	
+    }
 }
 
 static void s3c_adc_event(void *opaque,
@@ -1689,7 +1697,7 @@ static void s3c_adc_write(void *opaque, target_phys_addr_t addr,
         break;
 
     case S3C_ADCTSC:
-        s->ts = value & 0xff;
+        s->ts = value & 0x1ff;
         break;
 
     case S3C_ADCDLY:
