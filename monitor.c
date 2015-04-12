@@ -1153,6 +1153,16 @@ static void do_mouse_button(Monitor *mon, int button_state)
     kbd_mouse_event(0, 0, 0, mouse_button_state);
 }
 
+static void do_touch_event(Monitor *mon, const char *dx_str, const char *dy_str,
+                           int button_state)
+{
+    int dx, dy, dz;
+    dx = strtol(dx_str, NULL, 0);
+    dy = strtol(dy_str, NULL, 0);
+    dz = 0;
+    kbd_mouse_event(dx, dy, dz, button_state);
+}
+
 static void do_ioport_read(Monitor *mon, int count, int format, int size,
                            int addr, int has_index, int index)
 {
@@ -1719,6 +1729,8 @@ static const mon_cmd_t mon_cmds[] = {
       "dx dy [dz]", "send mouse move events" },
     { "mouse_button", "i", do_mouse_button,
       "state", "change mouse button state (1=L, 2=M, 4=R)" },
+    { "touch_event", "ssi", do_touch_event,
+      "dx dy state", "send touch events" },
     { "mouse_set", "i", do_mouse_set,
       "index", "set which mouse device receives events" },
 #ifdef HAS_AUDIO

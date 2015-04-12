@@ -300,6 +300,30 @@ static void mini2440_reset(void *opaque)
 	}
 }
 
+static void mini2440_reset_for_sylixos(void *opaque)
+{
+    struct mini2440_board_s *s = (struct mini2440_board_s *) opaque;
+    int32_t image_size;
+
+    s->cpu->env->regs[15] = 0;
+
+    if (s->kernel) {
+        if (strstr(s->kernel, "u-boot.bin")) {
+            image_size = load_image(s->kernel, qemu_get_ram_ptr(0x03f80000));
+            if (image_size > 0) {
+                mini2440_printf("loaded %s (size %x)\n", s->kernel, image_size);
+                s->cpu->env->regs[15] = S3C_RAM_BASE | 0x03f80000;
+            }
+        } else {
+            image_size = load_image(s->kernel, qemu_get_ram_ptr(0));
+            if (image_size > 0) {
+                mini2440_printf("loaded %s (size %x)\n", s->kernel, image_size);
+                s->cpu->env->regs[15] = S3C_RAM_BASE;
+            }
+        }
+    }
+}
+
 /* Typical touchscreen calibration values */
 static const int mini2440_ts_scale[6] = {
     0, (90 - 960) * 256 / 1021, -90 * 256 * 32,
@@ -348,7 +372,11 @@ static struct mini2440_board_s *mini2440_init_common(int ram_size,
     s3c_adc_setscale(s->cpu->adc, mini2440_ts_scale);
 
     /* Setup initial (reset) machine state */
+#if 0
     qemu_register_reset(mini2440_reset, s);
+#else
+    qemu_register_reset(mini2440_reset_for_sylixos, s);
+#endif
 
     return s;
 }
@@ -371,10 +399,14 @@ static void mini2440_init(ram_addr_t ram_size,
     mini = mini2440_init_common(ram_size,
                     kernel_filename, cpu_model, sd);
 
-	mini->nand = nand_init(NAND_MFR_SAMSUNG, 0x76);
+	mini->nand = nand_init(NAND_MFR_SAMSUNG, 0xf1);
     mini->cpu->nand->reg(mini->cpu->nand, mini->nand);
 
+#if 0
     mini2440_reset(mini);
+#else
+    mini2440_reset_for_sylixos(mini);
+#endif
 }
 
 QEMUMachine mini2440_machine = {
